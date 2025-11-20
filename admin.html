@@ -3,92 +3,292 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin - Create Link</title>
+    <title>Secure Download Link</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #f4f4f4; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 400px; text-align: center; }
-        input { width: 90%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; }
-        button { background: #28a745; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; width: 100%; font-size: 16px; font-weight: bold; }
-        button:hover { background: #218838; }
-        .result { margin-top: 20px; padding: 15px; background: #d4edda; color: #155724; border-radius: 5px; display: none; text-align: left; word-break: break-all; border: 1px solid #c3e6cb; }
-        .label { font-size: 12px; color: #666; margin-bottom: 5px; display: block; }
+        /* --- BASIC RESET & MOBILE FIXES --- */
+        * { box-sizing: border-box; } /* এলিমেন্ট সাইজ ঠিক রাখে */
+        
+        body { 
+            overflow-x: hidden; /* ডানে-বামে স্ক্রল বন্ধ */
+            margin: 0; 
+            padding: 0; 
+            font-family: 'Segoe UI', sans-serif; 
+            background-color: #f4f6f8;
+        }
+
+        /* ইমেজের সাইজ মোবাইলে স্ক্রিনের বাইরে যাবে না */
+        img, iframe { max-width: 100%; height: auto; }
+
+        .blog-admin-wrapper {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #ffffff; z-index: 999999; overflow-y: auto;
+        }
+
+        /* --- ADMIN PANEL --- */
+        #admin-panel { display: none; min-height: 100vh; justify-content: center; align-items: center; flex-direction: column; background: #f4f6f8; padding: 20px; }
+        .admin-card { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+        .admin-input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; }
+        .admin-btn { background: #28a745; color: white; padding: 12px; border: none; width: 100%; border-radius: 5px; cursor: pointer; font-size: 16px; margin-top: 10px; }
+        .result-box { margin-top: 15px; padding: 10px; background: #d1e7dd; display: none; word-break: break-all; border-radius: 5px; }
+
+        /* --- DOWNLOAD PANEL --- */
+        #download-panel { display: block; width: 100%; } 
+        
+        .sticky-timer-bar { 
+            position: sticky; top: 0; z-index: 1000000; 
+            background: #2c3e50; color: white; text-align: center; 
+            padding: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
+            font-size: 16px; font-weight: bold; border-bottom: 4px solid #e74c3c; 
+        }
+
+        .container { 
+            max-width: 800px; 
+            width: 95%; /* মোবাইলে দুই পাশে একটু জায়গা রাখবে */
+            margin: 0 auto; 
+            background: white; 
+            padding: 15px; 
+            min-height: 100vh; 
+            box-shadow: 0 0 10px rgba(0,0,0,0.05);
+        }
+        
+        /* --- AD WRAPPER FIX --- */
+        .ad-wrapper { 
+            margin: 15px auto; 
+            text-align: center; 
+            background: #f9f9f9; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center;
+            overflow: hidden; /* বড় অ্যাড মোবাইলে স্ক্রিন ভাঙবে না */
+            min-height: 50px; 
+            border: 1px dashed #eee;
+            max-width: 100%;
+        }
+        
+        .btn { 
+            background-color: #007bff; color: white; 
+            padding: 15px 20px; font-size: 18px; font-weight: bold; 
+            border: none; border-radius: 6px; cursor: pointer; 
+            display: none; width: 100%; max-width: 300px; 
+            margin: 20px auto; 
+        }
+
+        .bottom-area { 
+            margin-top: 40px; padding: 20px; 
+            background: #f8f9fa; border-top: 2px solid #eee; 
+            text-align: center; border-radius: 10px; 
+        }
+
+        #loading-screen { 
+            position: fixed; top:0; left:0; width:100%; height:100%; 
+            background: white; z-index: 1000001; 
+            display: flex; justify-content: center; align-items: center; 
+            flex-direction: column; 
+        }
+
+        /* টেক্সট সাইজ এবং হেডিং ফিক্স */
+        h1 { font-size: 24px; margin-bottom: 15px; }
+        p { font-size: 16px; line-height: 1.6; text-align: center; }
+
+        @keyframes blink { 50% { opacity: 0; } }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <h2>Create Short Link</h2>
-        <input type="text" id="longUrl" placeholder="Paste Long Video URL here..." required>
-        <button id="genBtn" onclick="saveLink()">Generate Link</button>
-        
-        <div class="result" id="resultBox">
-            <span class="label">Your Short Link:</span>
-            <input type="text" id="shortUrl" readonly onclick="this.select()" style="background: #fff;">
-            <small style="color: #777; display:block; margin-top:5px;">Copy and share this link.</small>
+<div class="blog-admin-wrapper">
+
+    <div id="loading-screen">
+        <h2>Loading System...</h2>
+        <p>Connecting to secure server...</p>
+    </div>
+
+    <div id="admin-panel">
+        <div class="admin-card">
+            <h2>STC URL Shortener</h2>
+            <p>Paste Your URL:</p>
+            <input type="text" id="longUrl" class="admin-input" placeholder="https://..." required>
+            <button class="admin-btn" id="genBtn">Generate Link</button>
+            <div class="result-box" id="resultBox">
+                <small>Copy Link:</small><br>
+                <input type="text" id="shortUrl" class="admin-input" readonly onclick="this.select()">
+            </div>
         </div>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+    <div id="download-panel">
+        <script type='text/javascript' src='//shorterwanderer.com/59/77/54/597754abe065552b1208b2fea7ecc1ce.js'></script>
+        
+        <div class="sticky-timer-bar">
+            <span>PLEASE WAIT: </span><span id="timer" style="color: #f1c40f; font-size: 22px;">15</span> s
+        </div>
 
-        // আপনার দেওয়া কনফিগারেশন
-        const firebaseConfig = {
-            apiKey: "AIzaSyBE54MB5e9zAsCr-40sh_rbGU8nwylFI_w",
-            authDomain: "mylinkshortener-77ff0.firebaseapp.com",
-            projectId: "mylinkshortener-77ff0",
-            storageBucket: "mylinkshortener-77ff0.firebasestorage.app",
-            messagingSenderId: "219157672598",
-            appId: "1:219157672598:web:619402200b2168408e08b7",
-            measurementId: "G-WXGKQV6VWJ"
-        };
+        <div class="container">
+            <div class="ad-wrapper" style="min-height: 90px;">
+                <script type="text/javascript"> atOptions = { 'key' : '0da7f6eff9cf10bf7c3289f2fb94727e', 'format' : 'iframe', 'height' : 90, 'width' : 728, 'params' : {} }; </script>
+                <script type="text/javascript" src="//shorterwanderer.com/0da7f6eff9cf10bf7c3289f2fb94727e/invoke.js"></script>
+            </div>
 
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+            <h1 style="text-align: center;">Secure Download Page</h1>
+            
+            <div class="ad-wrapper" style="min-height: 50px;">
+                <script type="text/javascript"> atOptions = { 'key' : '271015e6815d5eb6a0399c450c2fdc20', 'format' : 'iframe', 'height' : 50, 'width' : 320, 'params' : {} }; </script>
+                <script type="text/javascript" src="//shorterwanderer.com/271015e6815d5eb6a0399c450c2fdc20/invoke.js"></script>
+            </div>
 
-        // Function to Save Link
-        window.saveLink = async function() {
-            const longUrl = document.getElementById('longUrl').value.trim();
-            const resultBox = document.getElementById('resultBox');
-            const shortUrlInput = document.getElementById('shortUrl');
-            const btn = document.getElementById('genBtn');
+            <p>Please wait for the verification timer to finish. We are checking your connection quality.</p>
 
-            if (!longUrl) { alert("Please enter a URL"); return; }
-            if (!longUrl.startsWith('http')) { alert("Link must start with http:// or https://"); return; }
+            <div class="ad-wrapper" style="min-height: 250px;">
+                <script type="text/javascript"> atOptions = { 'key' : '7961bbc08a9c519588beb0d719f55389', 'format' : 'iframe', 'height' : 250, 'width' : 300, 'params' : {} }; </script>
+                <script type="text/javascript" src="//shorterwanderer.com/7961bbc08a9c519588beb0d719f55389/invoke.js"></script>
+            </div>
 
-            btn.innerText = "Generating...";
-            btn.disabled = true;
-
-            // Generate Random ID (6 characters)
-            const id = Math.random().toString(36).substring(2, 8);
-
-            try {
-                // Save to Firestore
-                await setDoc(doc(db, "links", id), {
-                    original_url: longUrl,
-                    createdAt: new Date()
-                });
-
-                // Create Final URL
-                // এটি অটোমেটিক ডিটেক্ট করবে আপনার সাইটের নাম (index.html এ পাঠাবে)
-                const currentPath = window.location.pathname.replace('admin.html', 'index.html');
-                const finalLink = window.location.origin + currentPath + "?id=" + id;
+            <div class="bottom-area">
+                <h3 id="wait-msg" style="color: red; animation: blink 1s infinite;">SCROLL UP & WAIT...</h3>
                 
-                shortUrlInput.value = finalLink;
-                resultBox.style.display = "block";
-                btn.innerText = "Generate Another";
-                btn.disabled = false;
-                document.getElementById('longUrl').value = ""; // Clear input
+                <div class="ad-wrapper" style="min-height: 100px;">
+                    <script async="async" data-cfasync="false" src="//shorterwanderer.com/471b7d8b780bd3d5d9a73b6540de1fe3/invoke.js"></script>
+                    <div id="container-471b7d8b780bd3d5d9a73b6540de1fe3"></div>
+                </div>
 
-            } catch (e) {
-                console.error("Error adding document: ", e);
-                alert("Error saving link. Make sure Firestore Database is created in Test Mode.");
-                btn.innerText = "Generate Link";
-                btn.disabled = false;
-            }
+                <button id="btn-step-1" class="btn">CONTINUE</button>
+                <button id="btn-step-2" class="btn">GET LINK</button>
+            </div>
+
+            <div class="ad-wrapper" style="min-height: 60px;">
+                <script type="text/javascript"> atOptions = { 'key' : '584da5cc8df5b504560bafb131a24b7d', 'format' : 'iframe', 'height' : 60, 'width' : 468, 'params' : {} }; </script>
+                <script type="text/javascript" src="//shorterwanderer.com/584da5cc8df5b504560bafb131a24b7d/invoke.js"></script>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyBE54MB5e9zAsCr-40sh_rbGU8nwylFI_w",
+        authDomain: "mylinkshortener-77ff0.firebaseapp.com",
+        projectId: "mylinkshortener-77ff0",
+        storageBucket: "mylinkshortener-77ff0.firebasestorage.app",
+        messagingSenderId: "219157672598",
+        appId: "1:219157672598:web:619402200b2168408e08b7",
+        measurementId: "G-WXGKQV6VWJ"
+    };
+
+    let app, db;
+    try {
+        app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
+    } catch (error) { console.error(error); }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const docId = urlParams.get('id');
+
+    if (!docId) {
+        document.getElementById('download-panel').style.display = 'none';
+        document.getElementById('admin-panel').style.display = 'flex';
+        document.getElementById('loading-screen').style.display = 'none';
+    } else {
+        initDownloadPage(docId);
+    }
+
+    // --- ADMIN LOGIC ---
+    document.getElementById('genBtn').addEventListener('click', async () => {
+        const longUrl = document.getElementById('longUrl').value.trim();
+        const btn = document.getElementById('genBtn');
+        
+        if (!longUrl) return alert("Please enter a valid URL!");
+
+        btn.innerText = "Generating...";
+        const id = Math.random().toString(36).substring(2, 8);
+        
+        try {
+            await setDoc(doc(db, "links", id), { original_url: longUrl, createdAt: new Date() });
+            
+            let currentUrl = window.location.href.split('?')[0]; 
+            const finalLink = currentUrl + "?id=" + id;
+            
+            document.getElementById('shortUrl').value = finalLink;
+            document.getElementById('resultBox').style.display = 'block';
+            btn.innerText = "Generate Another";
+        } catch (e) {
+            alert("Error: " + e.message + "\nCheck Firebase Rules!");
+            btn.innerText = "Try Again";
         }
-    </script>
+    });
 
+    // --- DOWNLOAD LOGIC ---
+    async function initDownloadPage(id) {
+        try {
+            const docSnap = await getDoc(doc(db, "links", id));
+            if (docSnap.exists()) {
+                window.finalDestination = docSnap.data().original_url;
+                document.getElementById('loading-screen').style.display = 'none';
+                startTimer();
+            } else {
+                document.body.innerHTML = "<h2 style='text-align:center;margin-top:50px;'>Link Expired or Not Found</h2>";
+            }
+        } catch (e) {
+            alert("System Error: " + e.message);
+        }
+    }
+
+    // --- TIMER & ADS LOGIC ---
+    const adDirectLink = "https://shorterwanderer.com/j1wei2b16v?key=5a6dbc0c1ff361f823ec8642da2a03dc";
+    let step1Clicked = false;
+    let step2Clicked = false;
+
+    function startTimer() {
+        let time = 15;
+        const timerEl = document.getElementById('timer');
+        const btn1 = document.getElementById('btn-step-1');
+        const waitMsg = document.getElementById('wait-msg');
+
+        const interval = setInterval(() => {
+            time--;
+            timerEl.innerText = time;
+            if (time <= 0) {
+                clearInterval(interval);
+                waitMsg.style.display = 'none';
+                btn1.style.display = 'block';
+            }
+        }, 1000);
+    }
+
+    document.getElementById('btn-step-1').addEventListener('click', function() {
+        if (!step1Clicked) {
+            window.open(adDirectLink, '_blank');
+            step1Clicked = true;
+        } else {
+            this.style.display = 'none';
+            document.getElementById('wait-msg').style.display = 'block';
+            document.getElementById('wait-msg').innerText = "VERIFYING STEP 2...";
+            window.scrollTo({top: 0, behavior: 'smooth'});
+            
+            let time = 15;
+            document.getElementById('timer').innerText = time;
+            const interval = setInterval(() => {
+                time--;
+                document.getElementById('timer').innerText = time;
+                if (time <= 0) {
+                    clearInterval(interval);
+                    document.getElementById('wait-msg').style.display = 'none';
+                    document.getElementById('btn-step-2').style.display = 'block';
+                }
+            }, 1000);
+        }
+    });
+
+    document.getElementById('btn-step-2').addEventListener('click', function() {
+        if (!step2Clicked) {
+            window.open(adDirectLink, '_blank');
+            step2Clicked = true;
+        } else {
+            window.location.href = window.finalDestination;
+        }
+    });
+</script>
 </body>
 </html>
